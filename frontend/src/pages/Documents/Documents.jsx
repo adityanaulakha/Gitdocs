@@ -70,7 +70,7 @@ export default function Documents() {
 
   return (
     <div className="bg-[#0B0F19] min-h-screen text-white">
-      <div className="pt-20 px-6 space-y-6">
+      <div className="pt-20 px-6 pl-[22%] space-y-6">
         {/* HEADER */}
         <div className="flex justify-between items-center">
           <div>
