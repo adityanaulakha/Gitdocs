@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const branchSchema = new mongoose.Schema(
   {
@@ -8,26 +8,33 @@ const branchSchema = new mongoose.Schema(
       trim: true,
       maxlength: 100,
     },
-
-    project: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Project",
+    projectId: {
+      type: String,
       required: true,
       index: true,
     },
-
     createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true, 
+      type: String,
+      required: true,
     },
-
     parentBranch: {
       type: String,
-      default: null, // agar kisi branch se create hui ho
+      default: null,
     },
   },
   {
     timestamps: { createdAt: true, updatedAt: false },
-  }
+  },
 );
+
+branchSchema.set("toJSON", {
+  virtuals: true,
+  versionKey: false,
+  transform(doc, ret) {
+    ret.id = ret._id;
+    delete ret._id;
+  },
+});
+
+const Branch = mongoose.models.Branch || mongoose.model("Branch", branchSchema);
+export default Branch;

@@ -5,6 +5,8 @@ import {
   createDocumentRequest,
   fetchDocumentsRequest,
 } from "../../store/slices/documentSlice";
+import { fetchProjectsRequest } from "../../store/slices/projectSlice";
+import { fetchVersionsRequest } from "../../store/slices/versionSlice";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -12,6 +14,9 @@ export default function Documents() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { documents, loading, error } = useSelector((state) => state.documents);
+  const { projects } = useSelector((state) => state.projects);
+  const { branches } = useSelector((state) => state.versions);
+  const { user } = useSelector((state) => state.auth);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -19,16 +24,22 @@ export default function Documents() {
   const [newDocName, setNewDocName] = useState("");
   const [newDocContent, setNewDocContent] = useState("");
   const [filterBranch, setFilterBranch] = useState("all");
-  const [branches, setBranches] = useState([
-    "main",
-    "feature/auth",
-    "bugfix/login",
-  ]);
 
   // Load documents from Redux store on mount
   useEffect(() => {
     dispatch(fetchDocumentsRequest());
+    dispatch(fetchProjectsRequest());
+    dispatch(fetchVersionsRequest());
   }, [dispatch]);
+
+  // Get unique branches from documents or versions store
+  const uniqueBranches = Array.from(
+    new Set([
+      "main",
+      ...documents.map((d) => d.branch).filter(Boolean),
+      ...branches.map((b) => b.name).filter(Boolean),
+    ]),
+  );
 
   // Filter documents based on selected branch
   const filteredDocs =
@@ -51,12 +62,14 @@ export default function Documents() {
 
   const handleCreateDocument = () => {
     if (newDocName.trim() && selectedProject) {
+      const project = projects.find((project) => project.id == selectedProject);
       const newDoc = {
         name: newDocName.trim(),
         content: newDocContent.trim() || "",
         branch: "main",
-        project: selectedProject,
-        author: "Current User",
+        projectId: selectedProject,
+        projectName: project?.name || "Untitled Project",
+        author: user?.name || "Current User",
         createdAt: new Date().toISOString(),
       };
       dispatch(createDocumentRequest(newDoc));
@@ -239,10 +252,15 @@ export default function Documents() {
                   className="w-full bg-[#0B0F19] border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500 transition cursor-pointer"
                 >
                   <option value="">Choose a project...</option>
-                  <option value="Backend API">Backend API</option>
-                  <option value="Frontend App">Frontend App</option>
-                  <option value="Database Schema">Database Schema</option>
-                  <option value="DevOps">DevOps</option>
+                  {projects.length > 0 ? (
+                    projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">No projects available</option>
+                  )}
                 </select>
               </div>
 

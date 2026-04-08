@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const projectSchema = new mongoose.Schema(
   {
@@ -8,37 +8,28 @@ const projectSchema = new mongoose.Schema(
       trim: true,
       maxlength: 100,
     },
-
     description: {
       type: String,
       default: "",
       maxlength: 500,
     },
-
     owner: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
       required: true,
       index: true,
     },
-
-    members: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-
+    branches: {
+      type: [String],
+      default: ["main"],
+    },
     currentBranch: {
       type: String,
-      default: "main", // default branch
+      default: "main",
     },
-
     isPublic: {
       type: Boolean,
       default: false,
     },
-
     isArchived: {
       type: Boolean,
       default: false,
@@ -46,5 +37,17 @@ const projectSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
+
+projectSchema.set("toJSON", {
+  virtuals: true,
+  versionKey: false,
+  transform(doc, ret) {
+    ret.id = ret._id;
+    delete ret._id;
+  },
+});
+
+const Project = mongoose.models.Project || mongoose.model("Project", projectSchema);
+export default Project;

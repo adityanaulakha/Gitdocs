@@ -12,13 +12,29 @@ const projectSlice = createSlice({
   initialState,
   reducers: {
     loadProjectsFromStorage: (state) => {
-      const projects = JSON.parse(localStorage.getItem('projects') || '[]');
-      // Ensure each project has branches and currentBranch
-      state.projects = projects.map(p => ({
+      const projects = JSON.parse(localStorage.getItem("projects") || "[]");
+      state.projects = projects.map((p) => ({
         ...p,
-        branches: p.branches || ['main'],
-        currentBranch: p.currentBranch || 'main',
+        branches: p.branches || ["main"],
+        currentBranch: p.currentBranch || "main",
       }));
+    },
+    fetchProjectsRequest: (state) => {
+      state.loading = true;
+      state.error = null;
+    },
+    fetchProjectsSuccess: (state, action) => {
+      state.loading = false;
+      state.projects = action.payload.map((project) => ({
+        ...project,
+        branches: project.branches || ["main"],
+        currentBranch: project.currentBranch || "main",
+      }));
+      localStorage.setItem("projects", JSON.stringify(state.projects));
+    },
+    fetchProjectsFailure: (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
     },
     createProjectRequest: (state) => {
       state.loading = true;
@@ -26,8 +42,8 @@ const projectSlice = createSlice({
     },
     createProjectSuccess: (state, action) => {
       state.loading = false;
-      state.projects.push(action.payload);
-      localStorage.setItem('projects', JSON.stringify(state.projects));
+      state.projects.unshift(action.payload);
+      localStorage.setItem("projects", JSON.stringify(state.projects));
     },
     createProjectFailure: (state, action) => {
       state.loading = false;
@@ -37,26 +53,26 @@ const projectSlice = createSlice({
       state.currentProject = action.payload;
     },
     updateProject: (state, action) => {
-      const index = state.projects.findIndex(p => p.id === action.payload.id);
+      const index = state.projects.findIndex((p) => p.id === action.payload.id);
       if (index !== -1) {
         state.projects[index] = { ...state.projects[index], ...action.payload };
-        localStorage.setItem('projects', JSON.stringify(state.projects));
+        localStorage.setItem("projects", JSON.stringify(state.projects));
       }
     },
     addBranchToProject: (state, action) => {
       const { projectId, branch } = action.payload;
-      const project = state.projects.find(p => p.id === projectId);
+      const project = state.projects.find((p) => p.id === projectId);
       if (project && !project.branches.includes(branch)) {
         project.branches.push(branch);
-        localStorage.setItem('projects', JSON.stringify(state.projects));
+        localStorage.setItem("projects", JSON.stringify(state.projects));
       }
     },
     setCurrentBranchForProject: (state, action) => {
       const { projectId, branch } = action.payload;
-      const project = state.projects.find(p => p.id === projectId);
+      const project = state.projects.find((p) => p.id === projectId);
       if (project) {
         project.currentBranch = branch;
-        localStorage.setItem('projects', JSON.stringify(state.projects));
+        localStorage.setItem("projects", JSON.stringify(state.projects));
       }
     },
   },
@@ -64,6 +80,9 @@ const projectSlice = createSlice({
 
 export const {
   loadProjectsFromStorage,
+  fetchProjectsRequest,
+  fetchProjectsSuccess,
+  fetchProjectsFailure,
   createProjectRequest,
   createProjectSuccess,
   createProjectFailure,

@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const commitSchema = new mongoose.Schema(
   {
@@ -8,46 +8,47 @@ const commitSchema = new mongoose.Schema(
       trim: true,
       maxlength: 500,
     },
-
-    project: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Project",
+    projectId: {
+      type: String,
       required: true,
       index: true,
     },
-
-    document: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Document",
+    documentId: {
+      type: String,
       required: true,
       index: true,
     },
-
     branch: {
       type: String,
       required: true,
       index: true,
     },
-
     author: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
       required: true,
     },
-
-    // previous commit reference (history chain banane ke liye)
     parentCommit: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Commit",
+      type: String,
       default: null,
     },
-
     snapshot: {
       type: String,
-      default: null, // document content at that time
+      default: null,
     },
   },
   {
     timestamps: { createdAt: true, updatedAt: false },
-  }
+  },
 );
+
+commitSchema.set("toJSON", {
+  virtuals: true,
+  versionKey: false,
+  transform(doc, ret) {
+    ret.id = ret._id;
+    delete ret._id;
+  },
+});
+
+const Commit = mongoose.models.Commit || mongoose.model("Commit", commitSchema);
+export default Commit;

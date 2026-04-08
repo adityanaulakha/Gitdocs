@@ -1,9 +1,11 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useSelector((state) => state.auth);
 
   const menuItems = [
     { label: "Dashboard", path: "/dashboard" },
@@ -55,8 +57,12 @@ const Sidebar = () => {
       {/* Bottom Profile */}
       <div>
         <div className="bg-[#1e293b] p-3 rounded-xl">
-          <p className="text-sm text-white font-semibold">Alex Rivera</p>
-          <p className="text-xs text-gray-400">Pro Developer</p>
+          <p className="text-sm text-white font-semibold">
+            {user?.name || "User"}
+          </p>
+          <p className="text-xs text-gray-400">
+            {user?.role === "admin" ? "Administrator" : "Team Member"}
+          </p>
         </div>
       </div>
     </aside>

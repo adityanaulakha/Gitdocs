@@ -14,7 +14,16 @@ class BaseApiService {
 
   
     this.api.interceptors.request.use((config) => {
-      const token = localStorage.getItem("token");
+      let token = null;
+      const authString = localStorage.getItem("auth");
+      if (authString) {
+        try {
+          const auth = JSON.parse(authString);
+          token = auth?.token;
+        } catch (error) {
+          token = null;
+        }
+      }
 
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -29,7 +38,7 @@ class BaseApiService {
 
         if (error.response && error.response.status === 401) {
           console.error("Session expired. Please login again.");
-          localStorage.removeItem("token");
+          localStorage.removeItem("auth");
           window.location.href = "/login";
         }
 

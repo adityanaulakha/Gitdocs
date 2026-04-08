@@ -1,6 +1,5 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
-const crypto = require("crypto");
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema(
   {
@@ -11,39 +10,57 @@ const userSchema = new mongoose.Schema(
       minlength: 2,
       maxlength: 50,
     },
-
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
       trim: true,
-      index: true, // fast lookup for login
+      index: true,
       match: [/^\S+@\S+\.\S+$/, "Invalid email"],
     },
-
     password: {
       type: String,
       required: true,
       minlength: 6,
-      select: false, // by default response me nahi aaye isiliye, agar jarurat ho to hatana hai
+      select: false,
     },
-
     role: {
       type: String,
       enum: ["user", "admin"],
       default: "user",
     },
-
-    resetPasswordToken: String,
-    resetPasswordExpire: Date,
-
     isActive: {
       type: Boolean,
-      default: true, //delete or deactivate 
+      default: true,
     },
   },
   {
-    timestamps: true, // createdAt, updatedAt ke liye hai agar jarurat pade to
-  }
+    timestamps: true,
+  },
 );
+
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) {
+    return;
+  }
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
+userSchema.methods.matchPassword = async function (enteredPassword) {
+  return bcrypt.compare(enteredPassword, this.password);
+};
+
+userSchema.set("toJSON", {
+  virtuals: true,
+  versionKey: false,
+  transform(doc, ret) {
+    ret.id = ret._id;
+    delete ret._id;
+    delete ret.password;
+  },
+});
+
+const User = mongoose.models.User || mongoose.model("User", userSchema);
+export default User;

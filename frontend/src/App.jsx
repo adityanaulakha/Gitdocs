@@ -11,6 +11,9 @@ import Sidebar from "./components/Sidebar";
 import Documents from "./pages/Documents/Documents";
 import Projects from "./pages/Projects/Projects";
 import ProjectDetailPage from "./pages/Projects/ProjectDetailPage";
+import Versions from "./pages/Versions/Versions";
+import Activity from "./pages/Activity/Activity";
+import Settings from "./pages/Settings/Settings";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -57,6 +60,39 @@ const App = () => {
           }
         />
         <Route
+          path={WebRoutes.VERSIONS()}
+          element={
+            <div className="flex">
+              <Sidebar />
+              <div className="flex-1">
+                <Versions />
+              </div>
+            </div>
+          }
+        />
+        <Route
+          path={WebRoutes.ACTIVITY()}
+          element={
+            <div className="flex">
+              <Sidebar />
+              <div className="flex-1">
+                <Activity />
+              </div>
+            </div>
+          }
+        />
+        <Route
+          path={WebRoutes.SETTINGS()}
+          element={
+            <div className="flex">
+              <Sidebar />
+              <div className="flex-1">
+                <Settings />
+              </div>
+            </div>
+          }
+        />
+        <Route
           path="/project/:id"
           element={
             <div className="flex">
@@ -68,6 +104,7 @@ const App = () => {
           }
         />
         <Route path={WebRoutes.EDITOR()} element={<EditorPage />} />
+        <Route path="/editor/:id" element={<EditorPage />} />
       </Routes>
       <ToastContainer />
     </>

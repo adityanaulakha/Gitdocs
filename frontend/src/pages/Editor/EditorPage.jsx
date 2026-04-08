@@ -1,46 +1,114 @@
-import { useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { updateDocument } from "../../store/slices/documentSlice";
+import { io } from "socket.io-client";
+import { updateDocumentRequest } from "../../store/slices/documentSlice";
+import { documentApiService } from "../../services/DocumentApiService";
 import Editor from "../../components/Editor";
 import { Save, GitCommit, ArrowLeft } from "lucide-react";
 import { WebRoutes } from "../../routes/WebRoutes";
 
 export default function EditorPage() {
   const [searchParams] = useSearchParams();
+  const { id: paramDocId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const docId = searchParams.get("docId");
+  const docId = paramDocId || searchParams.get("docId");
   const { documents } = useSelector((state) => state.documents);
   const { projects } = useSelector((state) => state.projects);
+  const { user } = useSelector((state) => state.auth);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [currentDoc, setCurrentDoc] = useState(null);
+  const [statusMessage, setStatusMessage] = useState("");
+  const socketRef = useRef(null);
 
   useEffect(() => {
-    if (docId) {
-      const doc = documents.find((d) => d.id === parseInt(docId));
-      if (doc) {
-        setCurrentDoc(doc);
-        setTitle(doc.name);
-        setContent(doc.content);
-      }
+    if (!docId) return;
+    const document = documents.find((d) => d.id === docId);
+    if (document) {
+      setCurrentDoc(document);
+      setTitle(document.name);
+      setContent(document.content);
     }
   }, [docId, documents]);
 
-  const handleSave = () => {
-    if (currentDoc) {
-      dispatch(
-        updateDocument({
-          ...currentDoc,
-          name: title,
-          content: content,
-          updatedAt: new Date().toISOString(),
-        }),
-      );
+  useEffect(() => {
+    if (!docId || currentDoc) return;
+
+    const loadDocument = async () => {
+      try {
+        const response = await documentApiService.getDocumentById(docId);
+        setCurrentDoc(response);
+        setTitle(response.name);
+        setContent(response.content);
+      } catch (error) {
+        setStatusMessage("Unable to load document.");
+      }
+    };
+
+    loadDocument();
+  }, [docId, currentDoc]);
+
+  useEffect(() => {
+    if (!docId) return;
+    const socket = io("http://localhost:5000");
+    socketRef.current = socket;
+
+    socket.emit("join-document", docId);
+
+    socket.on("document-update", ({ documentId, content: remoteContent }) => {
+      if (documentId === docId) {
+        setContent(remoteContent);
+        setStatusMessage("Collaborator edit received.");
+        setTimeout(() => setStatusMessage(""), 2000);
+      }
+    });
+
+    socket.on("document-saved", ({ documentId }) => {
+      if (documentId === docId) {
+        setStatusMessage("Saved by collaborator.");
+        setTimeout(() => setStatusMessage(""), 2000);
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [docId]);
+
+  const handleContentChange = (value) => {
+    setContent(value);
+    if (socketRef.current && docId) {
+      socketRef.current.emit("document-change", {
+        documentId: docId,
+        content: value,
+      });
     }
+  };
+
+  const handleSave = () => {
+    if (!currentDoc) return;
+
+    const payload = {
+      ...currentDoc,
+      name: title,
+      content,
+    };
+
+    dispatch(updateDocumentRequest(payload));
+    setCurrentDoc(payload);
+    setStatusMessage("Saving document...");
+    socketRef.current?.emit("save-document", {
+      documentId: currentDoc.id,
+      content,
+      userId: user?.id,
+    });
+
+    setTimeout(() => setStatusMessage("Document saved successfully."), 400);
+    setTimeout(() => setStatusMessage(""), 2000);
   };
 
   const handleBack = () => {
@@ -58,7 +126,7 @@ export default function EditorPage() {
 
   return (
     <div className="bg-[#0B0F19] min-h-screen text-white flex">
-      <div className="ml-64 mt-16 flex w-full h-[calc(100vh-64px)]">
+      <div className="mt-16 flex w-full h-[calc(100vh-64px)]">
         {/* LEFT EDITOR */}
         <div className="flex-1 flex flex-col border-r border-gray-800">
           {/* TOP BAR */}
@@ -81,7 +149,8 @@ export default function EditorPage() {
               />
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 items-center">
+              <span className="text-xs text-gray-400">{statusMessage}</span>
               <button
                 onClick={handleSave}
                 className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded"
@@ -96,7 +165,7 @@ export default function EditorPage() {
           </div>
 
           {/* TIPTAP EDITOR */}
-          <Editor content={content} onChange={setContent} />
+          <Editor content={content} onChange={handleContentChange} />
         </div>
 
         {/* RIGHT VERSION PANEL */}

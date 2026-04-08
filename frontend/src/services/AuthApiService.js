@@ -16,6 +16,10 @@ class AuthApiService {
     return baseApiService.post(apiRoutes.auth.login, data);
   }
 
+  register(data) {
+    return baseApiService.post(apiRoutes.auth.register, data);
+  }
+
   logout() {
     return baseApiService.post(apiRoutes.auth.logout);
   }

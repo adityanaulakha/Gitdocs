@@ -6,14 +6,11 @@ import Sidebar from "../../components/Sidebar";
 
 import {
   setCurrentProject,
-  addBranchToProject,
   setCurrentBranchForProject,
+  fetchProjectsRequest,
 } from "../../store/slices/projectSlice";
 import { createDocumentRequest } from "../../store/slices/documentSlice";
-import {
-  createBranchRequest,
-  setCurrentBranch,
-} from "../../store/slices/versionSlice";
+import { createVersionRequest } from "../../store/slices/versionSlice";
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
@@ -34,7 +31,11 @@ export default function ProjectDetailPage() {
   const [newDocContent, setNewDocContent] = useState("");
   const [newBranchName, setNewBranchName] = useState("");
 
-  const project = projects.find((p) => p.id === parseInt(id));
+  const project = projects.find((p) => p.id?.toString() === id);
+
+  useEffect(() => {
+    dispatch(fetchProjectsRequest());
+  }, [dispatch]);
 
   useEffect(() => {
     if (project) {
@@ -71,7 +72,7 @@ export default function ProjectDetailPage() {
   const handleCreateBranch = () => {
     if (newBranchName.trim()) {
       dispatch(
-        createBranchRequest({
+        createVersionRequest({
           name: newBranchName.trim(),
           projectId: project.id,
         }),

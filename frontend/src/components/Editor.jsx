@@ -1,5 +1,6 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { useEffect } from "react";
 
 const Editor = ({ content, onChange }) => {
   const editor = useEditor({
@@ -11,6 +12,15 @@ const Editor = ({ content, onChange }) => {
       }
     },
   });
+
+  useEffect(() => {
+    if (editor && content !== undefined && content !== null) {
+      const current = editor.getHTML();
+      if (content !== current) {
+        editor.commands.setContent(content);
+      }
+    }
+  }, [content, editor]);
 
   if (!editor) return null;
 

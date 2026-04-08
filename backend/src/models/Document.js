@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const documentSchema = new mongoose.Schema(
   {
@@ -8,37 +8,47 @@ const documentSchema = new mongoose.Schema(
       trim: true,
       maxlength: 200,
     },
-
     content: {
       type: String,
-      default: "", // text content
+      default: "",
     },
-
-    project: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Project",
-      required: true,
-      index: true, // for filtering
+    projectId: {
+      type: String,
+      default: "",
+      index: true,
     },
-
+    projectName: {
+      type: String,
+      default: "",
+    },
     branch: {
       type: String,
       required: true,
-      index: true, // branch se filtering ke liye hai bas
+      default: "main",
+      index: true,
     },
-
     createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+      type: String,
+      default: "",
     },
-
     lastEditedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
+      default: "",
     },
   },
   {
     timestamps: true,
-  }
+  },
 );
+
+documentSchema.set("toJSON", {
+  virtuals: true,
+  versionKey: false,
+  transform(doc, ret) {
+    ret.id = ret._id;
+    delete ret._id;
+  },
+});
+
+const Document = mongoose.models.Document || mongoose.model("Document", documentSchema);
+export default Document;

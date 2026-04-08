@@ -15,13 +15,26 @@ const commitSlice = createSlice({
       const commits = JSON.parse(localStorage.getItem('commits') || '[]');
       state.commits = commits;
     },
+    fetchCommitsRequest: (state) => {
+      state.loading = true;
+      state.error = null;
+    },
+    fetchCommitsSuccess: (state, action) => {
+      state.loading = false;
+      state.commits = action.payload;
+      localStorage.setItem('commits', JSON.stringify(state.commits));
+    },
+    fetchCommitsFailure: (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    },
     createCommitRequest: (state) => {
       state.loading = true;
       state.error = null;
     },
     createCommitSuccess: (state, action) => {
       state.loading = false;
-      state.commits.push(action.payload);
+      state.commits.unshift(action.payload);
       localStorage.setItem('commits', JSON.stringify(state.commits));
     },
     createCommitFailure: (state, action) => {
@@ -35,7 +48,6 @@ const commitSlice = createSlice({
       const index = state.commits.findIndex(c => c.id === action.payload.id);
       if (index !== -1) {
         state.commits[index] = { ...state.commits[index], ...action.payload };
-        localStorage.setItem('commits', JSON.stringify(state.commits));
       }
     },
   },
@@ -43,6 +55,9 @@ const commitSlice = createSlice({
 
 export const {
   loadCommitsFromStorage,
+  fetchCommitsRequest,
+  fetchCommitsSuccess,
+  fetchCommitsFailure,
   createCommitRequest,
   createCommitSuccess,
   createCommitFailure,

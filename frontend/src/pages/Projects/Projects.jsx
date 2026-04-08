@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { createProjectRequest } from "../../store/slices/projectSlice";
+import {
+  createProjectRequest,
+  fetchProjectsRequest,
+} from "../../store/slices/projectSlice";
 import { WebRoutes } from "../../routes/WebRoutes";
 
 const ITEMS_PER_PAGE = 5;
@@ -14,6 +17,10 @@ export default function Projects() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
+
+  useEffect(() => {
+    dispatch(fetchProjectsRequest());
+  }, [dispatch]);
 
   const totalPages = Math.ceil(projects.length / ITEMS_PER_PAGE);
 

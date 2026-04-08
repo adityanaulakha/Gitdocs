@@ -7,4 +7,7 @@ export const WebRoutes = {
     EDITOR: () => "/editor",
     DOCUMENTS: () => "/documents",
     PROJECTS: () => "/projects",
+    VERSIONS: () => "/versions",
+    ACTIVITY: () => "/activity",
+    SETTINGS: () => "/settings",
 }
