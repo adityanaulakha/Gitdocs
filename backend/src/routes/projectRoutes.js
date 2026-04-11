@@ -22,6 +22,7 @@ router.put("/:id", protect, updateProject);
 router.delete("/:id", protect, deleteProject);
 router.get("/:id/collaborators", protect, getProjectCollaborators);
 router.post("/:id/collaborators", protect, upsertProjectCollaborator);
+router.put("/:id/collaborators/:userId", protect, upsertProjectCollaborator);
 router.delete("/:id/collaborators/:userId", protect, removeProjectCollaborator);
 
 export default router;

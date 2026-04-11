@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
 import Sidebar from "../../components/Sidebar";
+import CollaboratorsModal from "../../components/CollaboratorsModal";
 
 import {
   setCurrentProject,
@@ -10,7 +11,10 @@ import {
   fetchProjectsRequest,
 } from "../../store/slices/projectSlice";
 import { fetchCommitsRequest } from "../../store/slices/commitSlice";
-import { createDocumentRequest } from "../../store/slices/documentSlice";
+import {
+  fetchDocumentsRequest,
+  createDocumentRequest,
+} from "../../store/slices/documentSlice";
 import { createVersionRequest } from "../../store/slices/versionSlice";
 import { projectApiService } from "../../services/ProjectApiService";
 import { versionApiService } from "../../services/VersionApiService";
@@ -32,13 +36,10 @@ export default function ProjectDetailPage() {
 
   const [showCreateDocModal, setShowCreateDocModal] = useState(false);
   const [showCreateBranchModal, setShowCreateBranchModal] = useState(false);
-  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showCollaboratorsModal, setShowCollaboratorsModal] = useState(false);
   const [newDocName, setNewDocName] = useState("");
   const [newDocContent, setNewDocContent] = useState("");
   const [newBranchName, setNewBranchName] = useState("");
-  const [collaborators, setCollaborators] = useState([]);
-  const [memberUserId, setMemberUserId] = useState("");
-  const [memberPermission, setMemberPermission] = useState("read");
   const [syncSourceBranch, setSyncSourceBranch] = useState("main");
   const [syncTargetBranch, setSyncTargetBranch] = useState("main");
   const [syncMode, setSyncMode] = useState("push");
@@ -54,23 +55,14 @@ export default function ProjectDetailPage() {
     if (project) {
       dispatch(setCurrentProject(project));
       dispatch(
-        fetchCommitsRequest({ projectId: project.id, branch: project.currentBranch }),
+        fetchCommitsRequest({
+          projectId: project.id,
+          branch: project.currentBranch,
+        }),
       );
+      dispatch(fetchDocumentsRequest());
     }
   }, [project, dispatch]);
-
-  useEffect(() => {
-    if (!project) return;
-    const loadCollaborators = async () => {
-      try {
-        const response = await projectApiService.getCollaborators(project.id);
-        setCollaborators(response || []);
-      } catch (loadError) {
-        setCollaborators([]);
-      }
-    };
-    loadCollaborators();
-  }, [project]);
 
   if (!project) {
     return (
@@ -116,40 +108,12 @@ export default function ProjectDetailPage() {
     dispatch(fetchCommitsRequest({ projectId: project.id, branch }));
   };
 
-  const handleSavePermission = async () => {
-    if (!memberUserId.trim()) return;
-    try {
-      const response = await projectApiService.upsertCollaborator(project.id, {
-        userId: memberUserId.trim(),
-        permission: memberPermission,
-      });
-      setCollaborators(response || []);
-      setMemberUserId("");
-      setMemberPermission("read");
-      setStatusMessage("Member permission updated.");
-      setTimeout(() => setStatusMessage(""), 1800);
-    } catch (permissionError) {
-      setStatusMessage(
-        permissionError?.response?.data?.message || "Failed to update permission.",
-      );
-      setTimeout(() => setStatusMessage(""), 2200);
-    }
-  };
-
-  const handleRemoveCollaborator = async (userId) => {
-    try {
-      const response = await projectApiService.removeCollaborator(project.id, userId);
-      setCollaborators(response || []);
-    } catch (removeError) {
-      setStatusMessage(
-        removeError?.response?.data?.message || "Failed to remove collaborator.",
-      );
-      setTimeout(() => setStatusMessage(""), 2200);
-    }
-  };
-
   const handleBranchSync = async () => {
-    if (!syncSourceBranch || !syncTargetBranch || syncSourceBranch === syncTargetBranch) {
+    if (
+      !syncSourceBranch ||
+      !syncTargetBranch ||
+      syncSourceBranch === syncTargetBranch
+    ) {
       setStatusMessage("Choose two different branches.");
       setTimeout(() => setStatusMessage(""), 2000);
       return;
@@ -161,16 +125,26 @@ export default function ProjectDetailPage() {
         targetBranch: syncTargetBranch,
         mode: syncMode,
       });
-      setStatusMessage(`Synced ${response.updatedCount} docs (${response.fromBranch} -> ${response.toBranch}).`);
+      setStatusMessage(
+        `Synced ${response.updatedCount} docs (${response.fromBranch} -> ${response.toBranch}).`,
+      );
       setTimeout(() => setStatusMessage(""), 2200);
-      dispatch(fetchCommitsRequest({ projectId: project.id, branch: project.currentBranch }));
+      dispatch(
+        fetchCommitsRequest({
+          projectId: project.id,
+          branch: project.currentBranch,
+        }),
+      );
     } catch (syncError) {
-      setStatusMessage(syncError?.response?.data?.message || "Branch sync failed.");
+      setStatusMessage(
+        syncError?.response?.data?.message || "Branch sync failed.",
+      );
       setTimeout(() => setStatusMessage(""), 2200);
     }
   };
 
-  const canManagePermissions = user?.id === project.owner || user?.role === "admin";
+  const canManagePermissions =
+    user?.id === project.owner || user?.role === "admin";
   const filteredCommits = commits.filter(
     (c) => c.projectId === project.id && c.branch === project.currentBranch,
   );
@@ -219,10 +193,10 @@ export default function ProjectDetailPage() {
             </button>
 
             <button
-              onClick={() => setShowPermissionModal(true)}
+              onClick={() => setShowCollaboratorsModal(true)}
               className="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded text-sm"
             >
-              Permissions
+              Collaborators
             </button>
           </div>
         </div>
@@ -277,7 +251,9 @@ export default function ProjectDetailPage() {
             >
               Sync Branches
             </button>
-            {statusMessage && <p className="text-xs text-indigo-300">{statusMessage}</p>}
+            {statusMessage && (
+              <p className="text-xs text-indigo-300">{statusMessage}</p>
+            )}
           </div>
         </div>
 
@@ -324,12 +300,15 @@ export default function ProjectDetailPage() {
               >
                 <p className="text-sm text-gray-100">{commit.message}</p>
                 <p className="text-xs text-gray-400 mt-1">
-                  {new Date(commit.createdAt).toLocaleString()} • {commit.author}
+                  {new Date(commit.createdAt).toLocaleString()} •{" "}
+                  {commit.author}
                 </p>
               </div>
             ))}
             {filteredCommits.length === 0 && (
-              <p className="text-sm text-gray-400">No commits yet on this branch.</p>
+              <p className="text-sm text-gray-400">
+                No commits yet on this branch.
+              </p>
             )}
           </div>
         </div>
@@ -400,75 +379,12 @@ export default function ProjectDetailPage() {
         </Modal>
       )}
 
-      {showPermissionModal && (
-        <Modal>
-          <h2 className="text-lg font-bold mb-4">Project Permissions</h2>
-
-          {canManagePermissions ? (
-            <div className="space-y-3">
-              <input
-                value={memberUserId}
-                onChange={(e) => setMemberUserId(e.target.value)}
-                placeholder="Collaborator userId"
-                className="w-full px-3 py-2 bg-[#0B0F19] border border-gray-600 rounded"
-              />
-              <select
-                value={memberPermission}
-                onChange={(e) => setMemberPermission(e.target.value)}
-                className="w-full px-3 py-2 bg-[#0B0F19] border border-gray-600 rounded"
-              >
-                <option value="read">Read</option>
-                <option value="write">Write</option>
-                <option value="admin">Admin</option>
-              </select>
-
-              <button
-                onClick={handleSavePermission}
-                className="w-full bg-indigo-600 px-3 py-2 rounded"
-              >
-                Save Permission
-              </button>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400 mb-3">
-              You can view collaborators but only owner/admin can change permissions.
-            </p>
-          )}
-
-          <div className="mt-4 space-y-2 max-h-52 overflow-y-auto">
-            {collaborators.map((member) => (
-              <div
-                key={member.userId}
-                className="bg-[#0B0F19] border border-gray-700 rounded p-3 flex justify-between items-center"
-              >
-                <div>
-                  <p className="text-sm">{member.userId}</p>
-                  <p className="text-xs text-gray-400 uppercase">{member.permission}</p>
-                </div>
-                {canManagePermissions && (
-                  <button
-                    onClick={() => handleRemoveCollaborator(member.userId)}
-                    className="text-xs text-red-400 hover:text-red-300"
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-            ))}
-            {collaborators.length === 0 && (
-              <p className="text-sm text-gray-400">No collaborators added.</p>
-            )}
-          </div>
-
-          <div className="mt-4">
-            <button
-              onClick={() => setShowPermissionModal(false)}
-              className="w-full bg-gray-700 px-3 py-2 rounded"
-            >
-              Close
-            </button>
-          </div>
-        </Modal>
+      {/* COLLABORATORS MODAL */}
+      {showCollaboratorsModal && (
+        <CollaboratorsModal
+          projectId={project.id}
+          onClose={() => setShowCollaboratorsModal(false)}
+        />
       )}
     </div>
   );

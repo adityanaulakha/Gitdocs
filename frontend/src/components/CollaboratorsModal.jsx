@@ -1,16 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { X, Plus, Trash2, Shield } from "lucide-react";
 
 import {
+  fetchCollaboratorsRequest,
   inviteCollaboratorRequest,
   removeCollaboratorRequest,
   updateCollaboratorRequest,
 } from "../store/slices/collaboratorSlice";
-import {
-  addProjectCollaborator,
-  removeProjectCollaborator,
-} from "../store/slices/projectSlice";
 
 export default function CollaboratorsModal({ projectId, onClose }) {
   const dispatch = useDispatch();
@@ -21,6 +18,10 @@ export default function CollaboratorsModal({ projectId, onClose }) {
     (state) => state.collaborators.inviteLoading,
   );
   const loading = useSelector((state) => state.collaborators.loading);
+
+  useEffect(() => {
+    dispatch(fetchCollaboratorsRequest(projectId));
+  }, [dispatch, projectId]);
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("read");
