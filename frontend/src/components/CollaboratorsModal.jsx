@@ -6,11 +6,11 @@ import {
   inviteCollaboratorRequest,
   removeCollaboratorRequest,
   updateCollaboratorRequest,
-} from "../../store/slices/collaboratorSlice";
+} from "../store/slices/collaboratorSlice";
 import {
   addProjectCollaborator,
   removeProjectCollaborator,
-} from "../../store/slices/projectSlice";
+} from "../store/slices/projectSlice";
 
 export default function CollaboratorsModal({ projectId, onClose }) {
   const dispatch = useDispatch();
