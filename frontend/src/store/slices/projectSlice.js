@@ -13,11 +13,19 @@ const projectSlice = createSlice({
   reducers: {
     loadProjectsFromStorage: (state) => {
       const projects = JSON.parse(localStorage.getItem("projects") || "[]");
-      state.projects = projects.map((p) => ({
-        ...p,
-        branches: p.branches || ["main"],
-        currentBranch: p.currentBranch || "main",
-      }));
+      state.projects = projects.map((p) => {
+        const branches = p.branches || ["main"];
+        const currentBranch =
+          p.currentBranch && branches.includes(p.currentBranch)
+            ? p.currentBranch
+            : "main";
+
+        return {
+          ...p,
+          branches,
+          currentBranch,
+        };
+      });
     },
     fetchProjectsRequest: (state) => {
       state.loading = true;
@@ -25,11 +33,19 @@ const projectSlice = createSlice({
     },
     fetchProjectsSuccess: (state, action) => {
       state.loading = false;
-      state.projects = action.payload.map((project) => ({
-        ...project,
-        branches: project.branches || ["main"],
-        currentBranch: project.currentBranch || "main",
-      }));
+      state.projects = action.payload.map((project) => {
+        const branches = project.branches || ["main"];
+        const currentBranch =
+          project.currentBranch && branches.includes(project.currentBranch)
+            ? project.currentBranch
+            : "main";
+
+        return {
+          ...project,
+          branches,
+          currentBranch,
+        };
+      });
       localStorage.setItem("projects", JSON.stringify(state.projects));
     },
     fetchProjectsFailure: (state, action) => {

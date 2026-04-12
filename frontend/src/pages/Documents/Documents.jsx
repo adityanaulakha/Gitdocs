@@ -33,13 +33,15 @@ export default function Documents() {
   }, [dispatch]);
 
   // Get unique branches from documents or versions store
-  const uniqueBranches = Array.from(
-    new Set([
-      "main",
-      ...documents.map((d) => d.branch).filter(Boolean),
-      ...branches.map((b) => b.name).filter(Boolean),
-    ]),
-  );
+  const uniqueBranches = [
+    "main",
+    ...Array.from(
+      new Set([
+        ...documents.map((d) => d.branch).filter(Boolean),
+        ...branches.map((b) => b.name).filter(Boolean),
+      ]),
+    ).filter((branch) => branch !== "main"),
+  ];
 
   // Filter documents based on selected branch
   const filteredDocs =
@@ -83,143 +85,145 @@ export default function Documents() {
 
   return (
     <div className="space-y-6 w-full max-w-7xl mx-auto">
-        {/* HEADER */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Documents</h1>
-            <p className="text-sm text-gray-400">
-              Manage and edit your documents
+      {/* HEADER */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold">Documents</h1>
+          <p className="text-sm text-gray-400">
+            Manage and edit your documents
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowCreateModal(true)}
+          className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm font-medium transition w-full sm:w-auto shrink-0"
+        >
+          + New Document
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-red-600 text-white p-3 rounded">{error}</div>
+      )}
+
+      {/* FILTER SECTION */}
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-gray-400">Filter by branch:</span>
+        <select
+          value={filterBranch}
+          onChange={(e) => {
+            setFilterBranch(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="bg-[#111827] border border-gray-700 px-3 py-2 rounded text-sm hover:border-indigo-500 transition cursor-pointer"
+        >
+          <option value="all">All Branches</option>
+          {uniqueBranches.map((branchName) => (
+            <option key={branchName} value={branchName}>
+              {branchName}
+            </option>
+          ))}
+        </select>
+
+        <span className="text-sm text-gray-500">
+          ({filteredDocs.length} documents)
+        </span>
+      </div>
+
+      {/* DOCUMENTS LIST */}
+      <div className="overflow-hidden rounded-xl border border-gray-800 bg-[#111827]">
+        <div className="grid grid-cols-[2.4fr_1fr_1fr_0.9fr_0.9fr] gap-4 px-5 py-4 text-xs uppercase tracking-wide text-gray-400 border-b border-gray-800">
+          <div>Document</div>
+          <div>Branch</div>
+          <div>Project</div>
+          <div>Author</div>
+          <div>Updated</div>
+        </div>
+        {currentDocs.length > 0 ? (
+          currentDocs.map((doc) => (
+            <div
+              key={doc.id}
+              onClick={() => navigate(`/editor/${doc.id}`)}
+              className="grid grid-cols-[2.4fr_1fr_1fr_0.9fr_0.9fr] gap-4 px-5 py-4 border-b border-gray-800 cursor-pointer hover:bg-gray-900 transition"
+            >
+              <div className="space-y-1">
+                <div className="font-medium text-white truncate">
+                  {doc.name}
+                </div>
+                <p className="text-xs text-gray-400 truncate">
+                  {doc.content
+                    ? doc.content.substring(0, 80) + "..."
+                    : "No content yet"}
+                </p>
+              </div>
+              <div className="text-sm text-gray-300">
+                <span className="inline-flex rounded-full bg-indigo-700/20 px-2 py-1 text-xs text-indigo-200">
+                  {doc.branch || "main"}
+                </span>
+              </div>
+              <div className="text-sm text-gray-300 truncate">
+                {projects.find((project) => project.id === doc.projectId)
+                  ?.name ||
+                  doc.projectName ||
+                  "Untitled"}
+              </div>
+              <div className="text-sm text-gray-300 truncate">
+                {doc.createdBy || doc.author || "You"}
+              </div>
+              <div className="text-sm text-gray-400">
+                {new Date(doc.createdAt).toLocaleDateString()}
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-gray-400">
+              {filterBranch === "all"
+                ? "No documents yet. Create your first document!"
+                : "No documents in this branch."}
             </p>
           </div>
+        )}
+      </div>
+
+      {/* PAGINATION */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-8">
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            Prev
+          </button>
+
+          {Array.from({ length: totalPages }).map((_, i) => {
+            const page = i + 1;
+            return (
+              <button
+                key={page}
+                onClick={() => goToPage(page)}
+                className={`px-3 py-1 rounded text-sm transition ${
+                  currentPage === page
+                    ? "bg-indigo-600 text-white"
+                    : "bg-gray-800 hover:bg-gray-700"
+                }`}
+              >
+                {page}
+              </button>
+            );
+          })}
 
           <button
-            type="button"
-            onClick={() => setShowCreateModal(true)}
-            className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm font-medium transition w-full sm:w-auto shrink-0"
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
-            + New Document
+            Next
           </button>
         </div>
-
-        {error && (
-          <div className="bg-red-600 text-white p-3 rounded">{error}</div>
-        )}
-
-        {/* FILTER SECTION */}
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400">Filter by branch:</span>
-          <select
-            value={filterBranch}
-            onChange={(e) => {
-              setFilterBranch(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="bg-[#111827] border border-gray-700 px-3 py-2 rounded text-sm hover:border-indigo-500 transition cursor-pointer"
-          >
-            <option value="all">All Branches</option>
-            {uniqueBranches.map((branchName) => (
-              <option key={branchName} value={branchName}>
-                {branchName}
-              </option>
-            ))}
-          </select>
-
-          <span className="text-sm text-gray-500">
-            ({filteredDocs.length} documents)
-          </span>
-        </div>
-
-        {/* DOCUMENTS LIST */}
-        <div className="space-y-4">
-          {currentDocs.length > 0 ? (
-            currentDocs.map((doc) => (
-              <div
-                key={doc.id}
-                onClick={() => navigate(`/editor/${doc.id}`)}
-                className="bg-[#111827] border border-gray-800 rounded-xl p-5 cursor-pointer hover:border-indigo-500 transition"
-              >
-                <div className="flex justify-between items-start">
-                  {/* LEFT */}
-                  <div className="flex-1">
-                    <h2 className="text-lg font-semibold text-white">
-                      {doc.name}
-                    </h2>
-                    <p className="text-sm text-gray-400 mt-1">
-                      {doc.content
-                        ? doc.content.substring(0, 80) + "..."
-                        : "No content yet"}
-                    </p>
-                    <div className="flex gap-4 mt-3 text-xs text-gray-500">
-                      <span>📁 {doc.project || "Untitled"}</span>
-                      <span>🔀 {doc.branch}</span>
-                      <span>👤 {doc.author}</span>
-                      <span>
-                        📅 {new Date(doc.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* RIGHT - EDIT BUTTON */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/editor/${doc.id}`);
-                    }}
-                    className="bg-indigo-600 hover:bg-indigo-500 px-3 py-1 rounded text-sm transition"
-                  >
-                    Edit
-                  </button>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-400">
-                {filterBranch === "all"
-                  ? "No documents yet. Create your first document!"
-                  : "No documents in this branch."}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* PAGINATION */}
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-8">
-            <button
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              Prev
-            </button>
-
-            {Array.from({ length: totalPages }).map((_, i) => {
-              const page = i + 1;
-              return (
-                <button
-                  key={page}
-                  onClick={() => goToPage(page)}
-                  className={`px-3 py-1 rounded text-sm transition ${
-                    currentPage === page
-                      ? "bg-indigo-600 text-white"
-                      : "bg-gray-800 hover:bg-gray-700"
-                  }`}
-                >
-                  {page}
-                </button>
-              );
-            })}
-
-            <button
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              Next
-            </button>
-          </div>
-        )}
+      )}
 
       {/* CREATE DOCUMENT MODAL */}
       {showCreateModal && (

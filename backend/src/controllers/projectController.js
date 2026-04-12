@@ -1,5 +1,7 @@
 import Project from "../models/Project.js";
 import Commit from "../models/Commit.js";
+import Document from "../models/Document.js";
+import Branch from "../models/Branch.js";
 import User from "../models/User.js";
 import {
   canAdminProject,
@@ -164,15 +166,21 @@ export const deleteProject = async (req, res) => {
     return res.status(403).json({ message: "Forbidden" });
   }
 
-  await Commit.create({
-    message: `Deleted project: ${project.name}`,
-    type: "delete",
-    projectId: project.id,
-    documentId: "project-meta",
-    branch: project.currentBranch || "main",
-    author: req.user.id,
-    snapshot: JSON.stringify({ before: serializeProjectForSnapshot(project) }),
-  });
+  // Delete all related entities
+  await Commit.deleteMany({ projectId: project.id });
+  await Document.deleteMany({ projectId: project.id });
+  await Branch.deleteMany({ projectId: project.id });
+
+  // Create a commit for the deletion (optional, since project is deleted)
+  // await Commit.create({
+  //   message: `Deleted project: ${project.name}`,
+  //   type: "delete",
+  //   projectId: project.id,
+  //   documentId: "project-meta",
+  //   branch: project.currentBranch || "main",
+  //   author: req.user.id,
+  //   snapshot: JSON.stringify({ before: serializeProjectForSnapshot(project) }),
+  // });
 
   await project.deleteOne();
   return res.json({ message: "Project deleted" });
