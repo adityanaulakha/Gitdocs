@@ -1,6 +1,10 @@
 import express from "express";
 import cors from "cors";
 import connectDB from "./config/db.js";
+import { connectRedis } from "./config/redis.js";
+import cache from "./utils/cache.js";
+import pubsub from "./utils/pubsub.js";
+import rateLimiter from "./utils/rateLimiter.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
@@ -10,8 +14,16 @@ import versionRoutes from "./routes/versionRoutes.js";
 
 const app = express();
 
-// DB connection
-connectDB();
+// DB and Redis connections
+await connectDB();
+await connectRedis();
+
+// Initialize utilities (will be called from server.js)
+export const initializeUtils = async () => {
+  await cache.init();
+  await pubsub.init();
+  await rateLimiter.init();
+};
 
 // Middlewares
 app.use(express.json());
@@ -26,6 +38,13 @@ app.use(
     credentials: true,
   }),
 );
+
+// Rate limiting - 100 requests per minute per IP
+app.use('/api', rateLimiter.middleware({
+  maxRequests: 100,
+  windowSeconds: 60,
+  keyGenerator: (req) => `${req.ip}:${req.path}`
+}));
 
 // API Routes
 app.use("/api/auth", authRoutes);

@@ -16,7 +16,7 @@ const Editor = ({ content, onChange }) => {
   useEffect(() => {
     if (editor && content !== undefined && content !== null) {
       const current = editor.getHTML();
-      if (content !== current) {
+      if (content !== current && !editor.isFocused) {
         editor.commands.setContent(content);
       }
     }

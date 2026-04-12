@@ -34,7 +34,7 @@ export const getCommits = async (req, res) => {
         { projectId: { $in: readableProjectIds } },
         {
           author: req.user.id,
-          type: { $in: ["create", "update", "delete"] },
+          type: { $in: ["create", "update", "delete", "commit"] },
         },
       ],
     };

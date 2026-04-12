@@ -1,6 +1,7 @@
 import Document from "../models/Document.js";
 import Project from "../models/Project.js";
 import { canReadProject, canWriteProject } from "../utils/projectPermissions.js";
+import cache from "../utils/cache.js";
 
 export const getDocuments = async (req, res) => {
   const filter = {};
@@ -18,15 +19,49 @@ export const getDocuments = async (req, res) => {
   }
   if (branch) filter.branch = branch;
 
-  const documents = await Document.find(filter).sort({ updatedAt: -1 });
+  // Create cache key based on filters
+  const cacheKey = `documents:${JSON.stringify(filter)}:${req.user.id}`;
+
+  // Try to get from cache first
+  let documents = await cache.get(cacheKey);
+  if (documents) {
+    return res.json(documents);
+  }
+
+  // If not in cache, fetch from database
+  documents = await Document.find(filter).sort({ updatedAt: -1 });
+
+  // Cache the result for 5 minutes
+  await cache.set(cacheKey, documents, 300);
+
   return res.json(documents);
 };
 
 export const getDocumentById = async (req, res) => {
-  const document = await Document.findById(req.params.id);
+  const cacheKey = `document:${req.params.id}`;
+
+  // Try to get from cache first
+  let document = await cache.get(cacheKey);
+  if (document) {
+    // Still need to check permissions
+    if (document.projectId) {
+      const project = await Project.findById(document.projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      if (!canReadProject(project, req.user)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+    }
+    return res.json(document);
+  }
+
+  // If not in cache, fetch from database
+  document = await Document.findById(req.params.id);
   if (!document) {
     return res.status(404).json({ message: "Document not found" });
   }
+
   if (document.projectId) {
     const project = await Project.findById(document.projectId);
     if (!project) {
@@ -36,6 +71,10 @@ export const getDocumentById = async (req, res) => {
       return res.status(403).json({ message: "Forbidden" });
     }
   }
+
+  // Cache the document for 10 minutes
+  await cache.set(cacheKey, document, 600);
+
   return res.json(document);
 };
 
@@ -64,6 +103,9 @@ export const createDocument = async (req, res) => {
     createdBy: createdBy || req.user.id,
     lastEditedBy: req.user.id,
   });
+
+  // Invalidate cache for document lists
+  await cache.invalidatePattern(`documents:*`);
 
   return res.status(201).json(document);
 };
@@ -95,6 +137,11 @@ export const updateDocument = async (req, res) => {
   document.updatedAt = new Date();
 
   await document.save();
+
+  // Invalidate cache for this document and document lists
+  await cache.del(`document:${req.params.id}`);
+  await cache.invalidatePattern(`documents:*`);
+
   return res.json(document);
 };
 
@@ -113,5 +160,10 @@ export const deleteDocument = async (req, res) => {
     }
   }
   await document.deleteOne();
+
+  // Invalidate cache for this document and document lists
+  await cache.del(`document:${req.params.id}`);
+  await cache.invalidatePattern(`documents:*`);
+
   return res.json({ message: "Document deleted" });
 };

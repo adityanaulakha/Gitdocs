@@ -21,10 +21,7 @@ import {
 } from "../../store/slices/documentSlice";
 import { createVersionRequest } from "../../store/slices/versionSlice";
 import { versionApiService } from "../../services/VersionApiService";
-import {
-  canWriteProject,
-  canAdminProject,
-} from "../../utils/projectAccess";
+import { canWriteProject, canAdminProject } from "../../utils/projectAccess";
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
@@ -77,11 +74,26 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     if (project) {
+      const activeBranch =
+        project.currentBranch &&
+        project.branches.includes(project.currentBranch)
+          ? project.currentBranch
+          : "main";
+
+      if (project.currentBranch !== activeBranch) {
+        dispatch(
+          setCurrentBranchForProject({
+            projectId: project.id,
+            branch: activeBranch,
+          }),
+        );
+      }
+
       dispatch(setCurrentProject(project));
       dispatch(
         fetchCommitsRequest({
           projectId: project.id,
-          branch: project.currentBranch,
+          branch: activeBranch,
         }),
       );
       dispatch(fetchDocumentsRequest());
@@ -97,8 +109,13 @@ export default function ProjectDetailPage() {
     );
   }
 
+  const currentBranch =
+    project.currentBranch && project.branches.includes(project.currentBranch)
+      ? project.currentBranch
+      : "main";
+
   const projectDocuments = documents.filter(
-    (d) => d.projectId === project.id && d.branch === project.currentBranch,
+    (d) => d.projectId === project.id && d.branch === currentBranch,
   );
 
   const canWrite = canWriteProject(project, user);
@@ -111,7 +128,7 @@ export default function ProjectDetailPage() {
         name: newDocName.trim(),
         content: newDocContent,
         projectId: project.id,
-        branch: project.currentBranch,
+        branch: currentBranch,
       }),
     );
     setNewDocName("");
@@ -161,7 +178,7 @@ export default function ProjectDetailPage() {
       dispatch(
         fetchCommitsRequest({
           projectId: project.id,
-          branch: project.currentBranch,
+          branch: currentBranch,
         }),
       );
     } catch (syncError) {
@@ -184,7 +201,7 @@ export default function ProjectDetailPage() {
   };
 
   const filteredCommits = commits.filter(
-    (c) => c.projectId === project.id && c.branch === project.currentBranch,
+    (c) => c.projectId === project.id && c.branch === currentBranch,
   );
 
   return (
@@ -218,7 +235,7 @@ export default function ProjectDetailPage() {
 
         <div className="flex flex-col sm:flex-row flex-wrap gap-2 shrink-0">
           <select
-            value={project.currentBranch}
+            value={currentBranch}
             onChange={(e) => handleBranchChange(e.target.value)}
             disabled={!canWrite}
             className="bg-[#111827] border border-gray-700 px-3 py-2 rounded text-sm min-w-[8rem] disabled:opacity-50"
@@ -348,32 +365,49 @@ export default function ProjectDetailPage() {
             </div>
           ) : null}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
-            {projectDocuments.map((doc) => (
-              <button
-                type="button"
-                key={doc.id}
-                onClick={() => navigate(`/editor?docId=${doc.id}`)}
-                className="text-left bg-[#111827] border border-gray-800 rounded-xl p-4 cursor-pointer hover:border-indigo-500 transition"
-              >
-                <h3 className="font-semibold text-lg break-words">{doc.name}</h3>
-                <p className="text-xs text-gray-400 mt-2">Branch: {doc.branch}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Updated: {new Date(doc.updatedAt).toLocaleDateString()}
-                </p>
-              </button>
-            ))}
-            {projectDocuments.length === 0 && !docLoading ? (
-              <div className="col-span-full text-center py-16 text-gray-400 text-sm">
-                No documents in this branch.{" "}
-                {canWrite ? "Create one to get started." : null}
-              </div>
-            ) : null}
+          <div className="bg-[#111827] border border-gray-800 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-800">
+              <h2 className="text-sm font-semibold text-gray-200">
+                Documents ({currentBranch})
+              </h2>
+            </div>
+            <div className="divide-y divide-gray-800">
+              {projectDocuments.map((doc) => (
+                <button
+                  type="button"
+                  key={doc.id}
+                  onClick={() => navigate(`/editor?docId=${doc.id}`)}
+                  className="w-full text-left px-4 py-3 hover:bg-[#0B0F19] transition flex items-center justify-between group"
+                >
+                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                    <div className="w-4 h-4 bg-indigo-600 rounded-sm flex-shrink-0"></div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-medium text-gray-100 truncate">
+                        {doc.name}
+                      </h3>
+                      <p className="text-xs text-gray-400">
+                        Updated {new Date(doc.updatedAt).toLocaleDateString()}{" "}
+                        by {doc.lastEditedBy || "Unknown"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 flex-shrink-0">
+                    {doc.branch}
+                  </div>
+                </button>
+              ))}
+              {projectDocuments.length === 0 && !docLoading ? (
+                <div className="px-4 py-8 text-center text-gray-400 text-sm">
+                  No documents in this branch.{" "}
+                  {canWrite ? "Create one to get started." : null}
+                </div>
+              ) : null}
+            </div>
           </div>
 
           <div className="bg-[#111827] border border-gray-800 rounded-xl p-4">
             <h2 className="text-sm font-semibold mb-3 text-gray-200">
-              Git history ({project.currentBranch})
+              Git history ({currentBranch})
             </h2>
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {filteredCommits.slice(0, 15).map((commit) => (
@@ -391,7 +425,9 @@ export default function ProjectDetailPage() {
                 </div>
               ))}
               {filteredCommits.length === 0 ? (
-                <p className="text-sm text-gray-400">No commits on this branch.</p>
+                <p className="text-sm text-gray-400">
+                  No commits on this branch.
+                </p>
               ) : null}
             </div>
           </div>
@@ -433,7 +469,8 @@ export default function ProjectDetailPage() {
                     Archived
                   </span>
                   <p className="text-xs text-gray-500">
-                    Freeze routine edits; collaborators still follow permissions.
+                    Freeze routine edits; collaborators still follow
+                    permissions.
                   </p>
                 </div>
                 <input
@@ -448,7 +485,8 @@ export default function ProjectDetailPage() {
               </label>
               {!canAdmin ? (
                 <p className="text-xs text-amber-400/90">
-                  Only project owners and project admins can change these options.
+                  Only project owners and project admins can change these
+                  options.
                 </p>
               ) : null}
             </div>
