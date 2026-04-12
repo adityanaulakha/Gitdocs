@@ -26,7 +26,7 @@ const io = new SocketIOServer(server, {
 await initializeUtils();
 
 // Subscribe to Redis pub/sub channels for cross-server communication
-pubsub.subscribe('document-updates', (data) => {
+await pubsub.subscribe('document-updates', (data) => {
   const { documentId, content, type, userId } = data;
   if (type === 'change') {
     io.to(`document:${documentId}`).emit("document-update", {

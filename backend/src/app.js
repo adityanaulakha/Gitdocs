@@ -14,9 +14,9 @@ import versionRoutes from "./routes/versionRoutes.js";
 
 const app = express();
 
-// DB connections
-connectDB();
-connectRedis();
+// DB and Redis connections
+await connectDB();
+await connectRedis();
 
 // Initialize utilities (will be called from server.js)
 export const initializeUtils = async () => {
